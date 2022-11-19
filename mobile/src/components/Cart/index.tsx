@@ -10,6 +10,8 @@ import { OrderConfirmModal } from '../OrderConfirmModal';
 import { MinusCircle } from '../Icons/MinusCircle';
 import { PlusCircle } from '../Icons/PlusCircle';
 
+import { api } from '../../utils/api';
+
 import {
   Action,
   Image,
@@ -26,6 +28,7 @@ interface CartProps {
   onAdd: (product: Product) => void;
   onDecrement: (product: Product) => void;
   onConfirmOrder: () => void;
+  selectedTable: string;
 }
 
 export function Cart({
@@ -33,15 +36,29 @@ export function Cart({
   onAdd,
   onDecrement,
   onConfirmOrder,
+  selectedTable,
 }: CartProps) {
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   const total = cartItems.reduce((acc, cartItem) => {
     return acc + cartItem.quantity * cartItem.product.price;
   }, 0);
 
-  function handleConfirmOrder() {
+  async function handleConfirmOrder() {
+    setIsLoading(true);
+
+    const payload = {
+      table: selectedTable,
+      products: cartItems.map((cartItem) => ({
+        product: cartItem.product._id,
+        quantity: cartItem.quantity,
+      })),
+    };
+
+    await api.post('/orders', payload);
+
+    setIsLoading(true);
     setIsModalVisible(true);
   }
 
@@ -65,7 +82,7 @@ export function Cart({
               <ProductContainer>
                 <Image
                   source={{
-                    uri: `http://192.168.1.182:3001/uploads/${cartItem.product.imagePath}`,
+                    uri: `http://192.168.1.181:3001/uploads/${cartItem.product.imagePath}`,
                   }}
                 />
 

@@ -1,41 +1,74 @@
+import { useEffect, useState } from 'react';
+import socketIo from 'socket.io-client';
+
 import { Order } from '../../types/Order';
+import { api } from '../../utils/api';
 import { OrdersBoard } from '../OrdersBoard';
+
 import { OrdersContainer } from './styles';
 
-const orders: Order[] = [
-  {
-    _id: '6372e48cbcd195b0d3d0f7f3',
-    table: '123',
-    status: 'WAITING',
-    products: [
-      {
-        _id: '6372e48cbcd195b0d3d0f7f4',
-        quantity: 3,
-        product: {
-          name: 'Pizza quatro queijos',
-          imagePath: '1668535954418-quatro-queijos.png',
-          price: 40,
-        },
-      },
-      {
-        _id: '6372e48cbcd195b0d3d0f7f5',
-        quantity: 2,
-        product: {
-          name: 'Coca cola',
-          imagePath: '1668535782170-coca-cola.png',
-          price: 7,
-        },
-      },
-    ],
-  },
-];
-
 export function Orders() {
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    const socket = socketIo('http://localhost:3001', {
+      transports: ['websocket'],
+    });
+
+    socket.on('orders@new', (order) => {
+      setOrders((prevState) => prevState.concat(order));
+    });
+  }, []);
+
+  useEffect(() => {
+    api.get('orders').then(({ data }) => {
+      setOrders(data);
+    });
+  }, []);
+
+  const waiting = orders.filter((order) => order.status === 'WAITING');
+  const inProduction = orders.filter(
+    (order) => order.status === 'IN_PRODUCTION'
+  );
+  const done = orders.filter((order) => order.status === 'DONE');
+
+  function handleOrderStatusChange(orderId: string, status: Order['status']) {
+    setOrders((prevState) =>
+      prevState.map((order) =>
+        order._id === orderId ? { ...order, status } : order
+      )
+    );
+  }
+
+  function handleCancelOrder(orderId: string) {
+    setOrders((prevState) =>
+      prevState.filter((order) => order._id !== orderId)
+    );
+  }
+
   return (
     <OrdersContainer>
-      <OrdersBoard icon="🕒" title="Fila de Espera" orders={orders} />
-      <OrdersBoard icon="👨🏼‍🍳" title="Em preparação" orders={[]} />
-      <OrdersBoard icon="✅" title="Pronto!" orders={[]} />
+      <OrdersBoard
+        icon="🕒"
+        title="Fila de Espera"
+        orders={waiting}
+        onChangeOrderStatus={handleOrderStatusChange}
+        onCancelOrder={handleCancelOrder}
+      />
+      <OrdersBoard
+        icon="👨🏼‍🍳"
+        title="Em preparação"
+        orders={inProduction}
+        onChangeOrderStatus={handleOrderStatusChange}
+        onCancelOrder={handleCancelOrder}
+      />
+      <OrdersBoard
+        icon="✅"
+        title="Pronto!"
+        orders={done}
+        onChangeOrderStatus={handleOrderStatusChange}
+        onCancelOrder={handleCancelOrder}
+      />
     </OrdersContainer>
   );
 }
